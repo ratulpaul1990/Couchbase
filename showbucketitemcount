@@ -1,0 +1,30 @@
+#!/usr/bin/ksh
+# Purpose: list itemcount of all the buckets in cluster
+#
+###############################################################################################################
+
+hostname=mwhlvcmmcb66
+
+CB_HOME=/opt/couchbase/bin
+WORK_DIR=/oravl01/couchbase/dba/dbmon
+script_path=/oravl01/couchbase/dba/dbmon
+username=`cat ${WORK_DIR}/.passwd | awk -F ' ' '{printf $1}'`
+password=`cat ${WORK_DIR}/.passwd | awk -F ' ' '{printf $2}'`
+
+
+bucketNames=`cbq -u ${username} -p ${password} -s="SELECT name FROM system:keyspaces" http://${hostname}:8091|grep -Po '(?<="name": ")[^"]*'|grep -v json`
+
+for bucketName in $bucketNames;
+do
+
+  curl -u ${username}:${password} http://${hostname}:8091/pools/default/buckets/${bucketName} | python -m json.tool > ${script_path}/abc
+  name=`cat ${script_path}/abc|grep -Po '(?<="name": ")[^"]*'`
+  itemCount=`cat ${script_path}/abc|grep -i "itemCount"|awk -F ":" '{print $2}'|awk -F "," '{print $1}'`
+  echo "For Bucket " ${name} " itemCount is " ${itemCount} >> ${script_path}/output
+
+done
+
+cat ${script_path}/output
+
+rm ${script_path}/output
+rm ${script_path}/abc
